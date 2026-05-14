@@ -171,6 +171,13 @@ select {
   justify-content: flex-end;
 }
 
+.topbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -610,6 +617,10 @@ textarea {
   }
 
   .status-pills {
+    justify-content: flex-start;
+  }
+
+  .topbar-actions {
     justify-content: flex-start;
   }
 

@@ -48,6 +48,26 @@ npm run start:desktop
 
 This starts the local server inside Electron and opens InkShelf as a desktop app window.
 
+## Build A macOS App
+
+```bash
+npm install
+npm run build:mac
+```
+
+The packaged app and DMG will be created in the `dist/` folder.
+
+## Where Your Data Lives
+
+In desktop mode, InkShelf keeps a file-based copy of your data inside Electron's `userData` directory.
+It also keeps a backup copy there, in addition to the in-app local browser storage.
+
+On macOS this normally resolves to a path like:
+
+```bash
+~/Library/Application Support/InkShelf
+```
+
 ## Upload To GitHub
 
 ```bash

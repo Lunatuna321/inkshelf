@@ -1,11 +1,63 @@
 const path = require("node:path");
-const { app, BrowserWindow } = require("electron");
+const fs = require("node:fs/promises");
+const { app, BrowserWindow, ipcMain } = require("electron");
 const { startServer } = require("../server");
 
 let mainWindow = null;
 let serverHandle = null;
+let storageInitialized = false;
+
+function getStoragePaths() {
+  const userDataDir = app.getPath("userData");
+  return {
+    userDataDir,
+    dataFile: path.join(userDataDir, "inkshelf-data.json"),
+    backupFile: path.join(userDataDir, "inkshelf-data.backup.json"),
+  };
+}
+
+async function ensureStorageHandlers() {
+  if (storageInitialized) {
+    return;
+  }
+
+  ipcMain.handle("inkshelf:storage-info", async () => {
+    return getStoragePaths();
+  });
+
+  ipcMain.handle("inkshelf:load-data", async () => {
+    const { dataFile, backupFile } = getStoragePaths();
+    const attempts = [dataFile, backupFile];
+
+    for (const file of attempts) {
+      try {
+        return await fs.readFile(file, "utf8");
+      } catch {
+        // Try next file.
+      }
+    }
+
+    return null;
+  });
+
+  ipcMain.handle("inkshelf:save-data", async (_event, rawJson) => {
+    const { userDataDir, dataFile, backupFile } = getStoragePaths();
+    await fs.mkdir(userDataDir, { recursive: true });
+    await fs.writeFile(dataFile, rawJson, "utf8");
+    await fs.writeFile(backupFile, rawJson, "utf8");
+    return {
+      ok: true,
+      savedAt: new Date().toISOString(),
+      dataFile,
+      backupFile,
+    };
+  });
+
+  storageInitialized = true;
+}
 
 async function createWindow() {
+  await ensureStorageHandlers();
   serverHandle = await startServer();
 
   mainWindow = new BrowserWindow({

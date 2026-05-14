@@ -94,20 +94,26 @@ const els = {
   globalSortMode: document.querySelector("#globalSortMode"),
   globalSearchStats: document.querySelector("#globalSearchStats"),
   globalResults: document.querySelector("#globalResults"),
+  exportBackupBtn: document.querySelector("#exportBackupBtn"),
+  importBackupBtn: document.querySelector("#importBackupBtn"),
+  importBackupInput: document.querySelector("#importBackupInput"),
 };
 
 let state = loadState();
 let aiReady = false;
 let aiBusy = false;
 let streamingAssistantIndex = -1;
+let saveTimer = null;
+let lastDesktopSave = null;
 
 els.quoteDate.value = today;
 
 bootstrap();
 
-function bootstrap() {
+async function bootstrap() {
   bindEvents();
   activateTab(state.ui.activeTab);
+  await hydrateDesktopState();
   renderAll();
   updateLiveMatch();
   renderStyleProfile();
@@ -152,6 +158,11 @@ function bindEvents() {
   els.globalSearchInput.addEventListener("input", renderSearchArea);
   els.globalTypeFilter.addEventListener("change", renderSearchArea);
   els.globalSortMode.addEventListener("change", renderSearchArea);
+  els.exportBackupBtn.addEventListener("click", exportBackup);
+  els.importBackupBtn.addEventListener("click", () => {
+    els.importBackupInput.click();
+  });
+  els.importBackupInput.addEventListener("change", importBackup);
 
   els.startReflectionBtn.addEventListener("click", startReflection);
   els.sendReflectionBtn.addEventListener("click", sendReflectionReply);
@@ -190,6 +201,104 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  queueDesktopSave();
+}
+
+function buildBackupPayload() {
+  return {
+    app: "InkShelf",
+    formatVersion: 1,
+    exportedAt: new Date().toISOString(),
+    state,
+  };
+}
+
+function buildBackupFilename() {
+  const stamp = new Date().toISOString().replaceAll(":", "-").replaceAll(".", "-");
+  return `inkshelf-backup-${stamp}.json`;
+}
+
+function exportBackup() {
+  const payload = JSON.stringify(buildBackupPayload(), null, 2);
+  const blob = new Blob([payload], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = buildBackupFilename();
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  window.alert("Backup exported. Keep the JSON file somewhere safe.");
+}
+
+async function importBackup(event) {
+  const file = event.target.files?.[0];
+  if (!file) {
+    return;
+  }
+
+  try {
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    const nextState = parsed?.state ? normalizeState(parsed.state) : normalizeState(parsed);
+    state = nextState;
+    saveState();
+    renderAll();
+    updateLiveMatch();
+    renderStyleProfile();
+    window.alert("Backup imported successfully.");
+  } catch {
+    window.alert("This backup file could not be imported.");
+  } finally {
+    els.importBackupInput.value = "";
+  }
+}
+
+async function hydrateDesktopState() {
+  if (!window.inkShelfDesktop?.isDesktop || typeof window.inkShelfDesktop.loadData !== "function") {
+    return;
+  }
+
+  try {
+    const raw = await window.inkShelfDesktop.loadData();
+    if (!raw) {
+      await saveDesktopStateNow();
+      return;
+    }
+
+    const parsed = JSON.parse(raw);
+    state = normalizeState(parsed);
+  } catch {
+    // Fall back to localStorage state if desktop hydration fails.
+  }
+}
+
+function queueDesktopSave() {
+  if (!window.inkShelfDesktop?.isDesktop || typeof window.inkShelfDesktop.saveData !== "function") {
+    return;
+  }
+
+  if (saveTimer) {
+    window.clearTimeout(saveTimer);
+  }
+
+  saveTimer = window.setTimeout(() => {
+    saveDesktopStateNow();
+  }, 250);
+}
+
+async function saveDesktopStateNow() {
+  if (!window.inkShelfDesktop?.isDesktop || typeof window.inkShelfDesktop.saveData !== "function") {
+    return;
+  }
+
+  try {
+    const result = await window.inkShelfDesktop.saveData(JSON.stringify(state));
+    lastDesktopSave = result?.savedAt || null;
+  } catch {
+    // Keep localStorage copy even if desktop file save fails.
+  }
 }
 
 function seedState() {

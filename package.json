@@ -7,9 +7,34 @@
   "scripts": {
     "start:web": "node server.js",
     "start:desktop": "electron .",
-    "dev": "electron ."
+    "dev": "electron .",
+    "build:mac:local": "electron-builder --mac dmg --config.mac.identity=null",
+    "build:mac": "electron-builder --mac dmg",
+    "build:dir": "electron-builder --dir"
   },
   "devDependencies": {
-    "electron": "^38.0.0"
+    "electron": "^42.0.1",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.inkshelf.desktop",
+    "productName": "InkShelf",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "index.html",
+      "styles.css",
+      "app.js",
+      "server.js",
+      "electron/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg"
+      ]
+    }
   }
 }
