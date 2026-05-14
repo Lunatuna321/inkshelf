@@ -25,11 +25,30 @@
           <span class="status-pill"><strong id="draftCount">0</strong> Drafts</span>
         </div>
         <div class="topbar-actions">
+          <span id="desktopStatusPill" class="status-pill subtle-pill">Local-only mode</span>
           <button id="exportBackupBtn" class="secondary-btn" type="button">Export Backup</button>
           <button id="importBackupBtn" class="secondary-btn" type="button">Import Backup</button>
           <input id="importBackupInput" type="file" accept="application/json,.json" hidden />
         </div>
       </header>
+
+      <section id="welcomePanel" class="panel welcome-panel hidden">
+        <div>
+          <p class="eyebrow">Welcome</p>
+          <h2>InkShelf is ready for long-form use</h2>
+          <p class="muted-copy">
+            Your library now supports local desktop storage, JSON backup export/import, and a packaged desktop build path. Before you start, it is a good habit to export a backup once in a while.
+          </p>
+        </div>
+        <div class="welcome-points">
+          <span class="pill-tag">Desktop file storage</span>
+          <span class="pill-tag">Backup import/export</span>
+          <span class="pill-tag">Electron desktop build</span>
+        </div>
+        <div class="action-row">
+          <button id="dismissWelcomeBtn" class="primary-btn" type="button">Got it</button>
+        </div>
+      </section>
 
       <main class="workspace-shell">
         <section id="quotesWorkspace" class="workspace active">

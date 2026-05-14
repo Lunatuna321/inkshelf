@@ -1,5 +1,6 @@
 const STORAGE_KEY = "inkshelf-data-v3";
 const LEGACY_STORAGE_KEYS = ["inkshelf-data-v2", "inkshelf-data-v1"];
+const UI_PREFERENCES_KEY = "inkshelf-ui-preferences-v1";
 
 const themeRules = [
   { label: "Self-Development", words: ["成长", "改变", "学习", "习惯", "自律", "提升", "勇气"] },
@@ -97,6 +98,9 @@ const els = {
   exportBackupBtn: document.querySelector("#exportBackupBtn"),
   importBackupBtn: document.querySelector("#importBackupBtn"),
   importBackupInput: document.querySelector("#importBackupInput"),
+  desktopStatusPill: document.querySelector("#desktopStatusPill"),
+  welcomePanel: document.querySelector("#welcomePanel"),
+  dismissWelcomeBtn: document.querySelector("#dismissWelcomeBtn"),
 };
 
 let state = loadState();
@@ -105,6 +109,8 @@ let aiBusy = false;
 let streamingAssistantIndex = -1;
 let saveTimer = null;
 let lastDesktopSave = null;
+let desktopStorageInfo = null;
+let uiPreferences = loadUiPreferences();
 
 els.quoteDate.value = today;
 
@@ -114,10 +120,13 @@ async function bootstrap() {
   bindEvents();
   activateTab(state.ui.activeTab);
   await hydrateDesktopState();
+  await loadDesktopStorageInfo();
   renderAll();
   updateLiveMatch();
   renderStyleProfile();
   checkAiStatus();
+  renderDesktopStatus();
+  renderWelcomePanel();
 }
 
 function bindEvents() {
@@ -163,6 +172,7 @@ function bindEvents() {
     els.importBackupInput.click();
   });
   els.importBackupInput.addEventListener("change", importBackup);
+  els.dismissWelcomeBtn.addEventListener("click", dismissWelcomePanel);
 
   els.startReflectionBtn.addEventListener("click", startReflection);
   els.sendReflectionBtn.addEventListener("click", sendReflectionReply);
@@ -202,6 +212,24 @@ function loadState() {
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   queueDesktopSave();
+  renderDesktopStatus();
+}
+
+function loadUiPreferences() {
+  try {
+    const raw = localStorage.getItem(UI_PREFERENCES_KEY);
+    if (!raw) {
+      return { welcomeDismissed: false };
+    }
+    const parsed = JSON.parse(raw);
+    return { welcomeDismissed: Boolean(parsed.welcomeDismissed) };
+  } catch {
+    return { welcomeDismissed: false };
+  }
+}
+
+function saveUiPreferences() {
+  localStorage.setItem(UI_PREFERENCES_KEY, JSON.stringify(uiPreferences));
 }
 
 function buildBackupPayload() {
@@ -274,6 +302,18 @@ async function hydrateDesktopState() {
   }
 }
 
+async function loadDesktopStorageInfo() {
+  if (!window.inkShelfDesktop?.isDesktop || typeof window.inkShelfDesktop.getStorageInfo !== "function") {
+    return;
+  }
+
+  try {
+    desktopStorageInfo = await window.inkShelfDesktop.getStorageInfo();
+  } catch {
+    desktopStorageInfo = null;
+  }
+}
+
 function queueDesktopSave() {
   if (!window.inkShelfDesktop?.isDesktop || typeof window.inkShelfDesktop.saveData !== "function") {
     return;
@@ -296,9 +336,39 @@ async function saveDesktopStateNow() {
   try {
     const result = await window.inkShelfDesktop.saveData(JSON.stringify(state));
     lastDesktopSave = result?.savedAt || null;
+    desktopStorageInfo = result || desktopStorageInfo;
+    renderDesktopStatus();
   } catch {
     // Keep localStorage copy even if desktop file save fails.
   }
+}
+
+function renderDesktopStatus() {
+  if (!els.desktopStatusPill) {
+    return;
+  }
+
+  if (!window.inkShelfDesktop?.isDesktop) {
+    els.desktopStatusPill.textContent = "Browser-only mode";
+    return;
+  }
+
+  const saveText = lastDesktopSave ? `Saved ${formatTimestamp(lastDesktopSave)}` : "Desktop storage active";
+  const locationText = desktopStorageInfo?.dataFile ? ` · ${shortenPath(desktopStorageInfo.dataFile)}` : "";
+  els.desktopStatusPill.textContent = `${saveText}${locationText}`;
+}
+
+function renderWelcomePanel() {
+  if (!els.welcomePanel) {
+    return;
+  }
+  els.welcomePanel.classList.toggle("hidden", uiPreferences.welcomeDismissed);
+}
+
+function dismissWelcomePanel() {
+  uiPreferences.welcomeDismissed = true;
+  saveUiPreferences();
+  renderWelcomePanel();
 }
 
 function seedState() {
@@ -1549,6 +1619,26 @@ function topLabel(counter, fallback) {
 
 function formatDate(date) {
   return date;
+}
+
+function formatTimestamp(value) {
+  try {
+    return new Date(value).toLocaleString([], {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "recently";
+  }
+}
+
+function shortenPath(value) {
+  if (!value) {
+    return "";
+  }
+  return value.length > 56 ? `...${value.slice(-53)}` : value;
 }
 
 function normalizeBookStatus(status) {

@@ -2,6 +2,7 @@
   "name": "inkshelf",
   "version": "0.1.0",
   "private": true,
+  "author": "Luna Li",
   "description": "A reading, writing, and reflection desktop app prototype.",
   "main": "electron/main.js",
   "scripts": {
@@ -27,11 +28,13 @@
       "styles.css",
       "app.js",
       "server.js",
+      "build/**/*",
       "electron/**/*",
       "package.json"
     ],
     "mac": {
       "category": "public.app-category.productivity",
+      "icon": "build/icon.icns",
       "target": [
         "dmg"
       ]

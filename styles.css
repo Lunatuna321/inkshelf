@@ -190,6 +190,10 @@ select {
   font-size: 0.92rem;
 }
 
+.subtle-pill {
+  background: rgba(255, 255, 255, 0.42);
+}
+
 .book-chip {
   width: 14px;
   height: 14px;
@@ -217,6 +221,22 @@ select {
 
 .workspace-shell {
   margin-top: 18px;
+}
+
+.welcome-panel {
+  margin-top: 18px;
+  display: grid;
+  gap: 14px;
+}
+
+.welcome-panel.hidden {
+  display: none;
+}
+
+.welcome-points {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .workspace {

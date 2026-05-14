@@ -1,6 +1,6 @@
 const path = require("node:path");
 const fs = require("node:fs/promises");
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain, nativeImage } = require("electron");
 const { startServer } = require("../server");
 
 let mainWindow = null;
@@ -14,6 +14,10 @@ function getStoragePaths() {
     dataFile: path.join(userDataDir, "inkshelf-data.json"),
     backupFile: path.join(userDataDir, "inkshelf-data.backup.json"),
   };
+}
+
+function getAppIconPath() {
+  return path.join(__dirname, "..", "build", "icon.png");
 }
 
 async function ensureStorageHandlers() {
@@ -67,6 +71,7 @@ async function createWindow() {
     minHeight: 760,
     backgroundColor: "#f3ede3",
     title: "InkShelf",
+    icon: getAppIconPath(),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -86,6 +91,13 @@ async function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  if (process.platform === "darwin") {
+    const dockIcon = nativeImage.createFromPath(getAppIconPath());
+    if (!dockIcon.isEmpty()) {
+      app.dock.setIcon(dockIcon);
+    }
+  }
+
   await createWindow();
 
   app.on("activate", async () => {
