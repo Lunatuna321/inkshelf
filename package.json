@@ -1,0 +1,15 @@
+{
+  "name": "inkshelf",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A reading, writing, and reflection desktop app prototype.",
+  "main": "electron/main.js",
+  "scripts": {
+    "start:web": "node server.js",
+    "start:desktop": "electron .",
+    "dev": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^38.0.0"
+  }
+}

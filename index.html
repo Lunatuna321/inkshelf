@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>InkShelf</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand-block">
+          <p class="eyebrow">Reading, Writing, Reflection</p>
+          <h1>InkShelf</h1>
+        </div>
+        <nav class="tabbar" aria-label="Main Navigation">
+          <button class="tab-btn active" data-tab="quotes" type="button">Excerpts</button>
+          <button class="tab-btn" data-tab="writing" type="button">Writing</button>
+          <button class="tab-btn" data-tab="reflection" type="button">Reflection</button>
+          <button class="tab-btn" data-tab="search" type="button">Library Search</button>
+        </nav>
+        <div class="status-pills">
+          <span class="status-pill"><strong id="bookCount">0</strong> Active Books</span>
+          <span class="status-pill"><strong id="quoteCount">0</strong> Excerpts</span>
+          <span class="status-pill"><strong id="draftCount">0</strong> Drafts</span>
+        </div>
+      </header>
+
+      <main class="workspace-shell">
+        <section id="quotesWorkspace" class="workspace active">
+          <aside class="sidebar">
+            <div class="sidebar-header">
+              <div>
+                <h2>Book Folders</h2>
+                <p>Select one book and keep capturing excerpts inside it.</p>
+              </div>
+              <button id="newBookBtn" class="secondary-btn" type="button">New Book</button>
+            </div>
+
+            <form id="bookForm" class="mini-form hidden">
+              <label>
+                <span>Book Title</span>
+                <input id="bookNameInput" type="text" placeholder="For example: The Stranger" />
+              </label>
+              <label>
+                <span>Author</span>
+                <input id="bookAuthorInput" type="text" placeholder="For example: Albert Camus" />
+              </label>
+              <label>
+                <span>Reading Status</span>
+                <select id="bookStatusInput">
+                  <option value="Reading">Reading</option>
+                  <option value="Finished">Finished</option>
+                  <option value="To Read">To Read</option>
+                </select>
+              </label>
+              <label>
+                <span>Cover Accent</span>
+                <select id="bookColorInput">
+                  <option value="sun">Amber Sand</option>
+                  <option value="forest">Forest Moss</option>
+                  <option value="wine">Burnt Wine</option>
+                  <option value="ocean">Mist Blue</option>
+                </select>
+              </label>
+              <button class="primary-btn" type="submit">Create Folder</button>
+            </form>
+
+            <div id="bookList" class="sidebar-list"></div>
+
+            <div class="sidebar-block">
+              <div class="subheading">
+                <h3>Excerpt Topics</h3>
+                <span id="quoteTopicCount">0 items</span>
+              </div>
+              <div id="quoteTopicList" class="sidebar-list compact"></div>
+            </div>
+          </aside>
+
+          <section class="workspace-main">
+            <div class="panel hero-panel">
+              <div>
+                <p class="eyebrow">Current Book</p>
+                <h2 id="currentBookTitle">No book selected yet</h2>
+                <p id="currentBookMeta" class="muted-copy">
+                  Create a book once and keep adding excerpts without re-entering title and author.
+                </p>
+              </div>
+              <div class="action-row">
+                <button id="editBookBtn" class="secondary-btn" type="button">Edit Book</button>
+                <button id="deleteBookBtn" class="secondary-btn danger-btn" type="button">Delete Book</button>
+              </div>
+              <form id="editBookForm" class="mini-form hidden">
+                <label>
+                  <span>Book Title</span>
+                  <input id="editBookNameInput" type="text" />
+                </label>
+                <label>
+                  <span>Author</span>
+                  <input id="editBookAuthorInput" type="text" />
+                </label>
+                <label>
+                  <span>Reading Status</span>
+                  <select id="editBookStatusInput">
+                    <option value="Reading">Reading</option>
+                    <option value="Finished">Finished</option>
+                    <option value="To Read">To Read</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Cover Accent</span>
+                  <select id="editBookColorInput">
+                    <option value="sun">Amber Sand</option>
+                    <option value="forest">Forest Moss</option>
+                    <option value="wine">Burnt Wine</option>
+                    <option value="ocean">Mist Blue</option>
+                  </select>
+                </label>
+                <div class="action-row">
+                  <button class="primary-btn" type="submit">Save Changes</button>
+                  <button id="cancelEditBookBtn" class="secondary-btn" type="button">Cancel</button>
+                </div>
+              </form>
+            </div>
+
+            <div class="panel">
+              <div class="panel-heading">
+                <h2>Capture Excerpts</h2>
+                <p>Everything here is saved into the book folder you are currently viewing.</p>
+              </div>
+              <form id="quoteForm" class="stack">
+                <label>
+                  <span>Date</span>
+                  <input id="quoteDate" type="date" required />
+                </label>
+                <label>
+                  <span>Excerpt Text</span>
+                  <textarea
+                    id="quoteText"
+                    rows="9"
+                    placeholder="Paste the passage you want to keep"
+                    required
+                  ></textarea>
+                </label>
+                <div class="action-row">
+                  <button class="primary-btn" type="submit">Save to Current Book</button>
+                  <span id="quoteFormHint" class="muted-note">Theme, style, and mood will be classified automatically.</span>
+                </div>
+              </form>
+            </div>
+
+            <div class="panel">
+              <div class="toolbar">
+                <label class="search-box">
+                  <span>Search Excerpts</span>
+                  <input id="quoteSearchInput" type="search" placeholder="Keyword, theme, style, mood" />
+                </label>
+                <label>
+                  <span>Sort By</span>
+                  <select id="quoteSortMode">
+                    <option value="date-desc">Newest First</option>
+                    <option value="date-asc">Oldest First</option>
+                    <option value="theme">Theme</option>
+                    <option value="style">Style</option>
+                    <option value="mood">Mood</option>
+                  </select>
+                </label>
+              </div>
+              <div id="quoteCards" class="card-list"></div>
+            </div>
+          </section>
+        </section>
+
+        <section id="writingWorkspace" class="workspace">
+          <aside class="sidebar">
+            <div class="sidebar-header">
+              <div>
+                <h2>Writing Shelf</h2>
+                <p>Jump on the left, write and revise on the right.</p>
+              </div>
+            </div>
+
+            <div class="sidebar-block">
+              <div class="subheading">
+                <h3>Draft Topics</h3>
+                <span id="draftTopicCount">0 drafts</span>
+              </div>
+              <div id="draftTopicList" class="sidebar-list compact"></div>
+            </div>
+
+            <div class="sidebar-block">
+              <div class="subheading">
+                <h3>Filters</h3>
+              </div>
+              <label>
+                <span>Search</span>
+                <input id="draftSearchInput" type="search" placeholder="Title, body, theme, style" />
+              </label>
+              <label>
+                <span>Sort By</span>
+                <select id="draftSortMode">
+                  <option value="date-desc">Newest First</option>
+                  <option value="date-asc">Oldest First</option>
+                  <option value="theme">Theme</option>
+                  <option value="style">Style</option>
+                  <option value="mood">Mood</option>
+                </select>
+              </label>
+            </div>
+          </aside>
+
+          <section class="workspace-main">
+            <div class="panel">
+              <div class="panel-heading">
+                <h2>Writing Studio</h2>
+                <p>As you write, the app surfaces the closest excerpts in your library.</p>
+              </div>
+
+              <div class="stack">
+                <label>
+                  <span>Title</span>
+                  <input id="draftTitle" type="text" placeholder="What are you writing toward?" />
+                </label>
+                <label>
+                  <span>Linked Book</span>
+                  <select id="draftBookSelect"></select>
+                </label>
+                <label>
+                  <span>Draft Text</span>
+                  <textarea
+                    id="draftText"
+                    rows="12"
+                    placeholder="Start writing. Relevant excerpts and tonal references will update in real time."
+                  ></textarea>
+                </label>
+                <div class="action-row">
+                  <button id="saveDraftBtn" class="primary-btn" type="button">Save Draft</button>
+                  <span id="draftHint" class="muted-note">Similarity analysis updates while you type.</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel dual-panel">
+              <div>
+                <div class="match-header">
+                  <h3>Live Reference</h3>
+                  <span id="matchScore">Similarity 0%</span>
+                </div>
+                <p id="matchAdvice" class="muted-copy">Write a little more and the app will start comparing tone and structure.</p>
+                <div id="matchResult" class="match-result empty">No reference excerpt yet</div>
+              </div>
+              <div>
+                <div class="match-header">
+                  <h3>Draft Library</h3>
+                  <span id="draftFilterCount">0 drafts</span>
+                </div>
+                <div id="draftCards" class="card-list"></div>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <section id="reflectionWorkspace" class="workspace">
+          <aside class="sidebar">
+            <div class="sidebar-header">
+              <div>
+                <h2>Reflection Threads</h2>
+                <p>Keep track of questions you have already explored.</p>
+              </div>
+            </div>
+
+            <div class="sidebar-block">
+              <div class="subheading">
+                <h3>History</h3>
+                <span id="reflectionTopicHistoryCount">0 threads</span>
+              </div>
+              <div id="reflectionTopicHistory" class="sidebar-list compact"></div>
+            </div>
+
+            <div class="sidebar-block">
+              <h3>AI Status</h3>
+              <p id="aiConnectionStatus" class="muted-copy">
+                Checking local AI service status.
+              </p>
+            </div>
+          </aside>
+
+          <section class="workspace-main">
+            <div class="panel">
+              <div class="panel-heading">
+                <h2>Reflection Dialogue</h2>
+                <p>Start with a question. The AI will push the thought deeper, then turn the conversation into a polished short piece in a style close to yours.</p>
+              </div>
+
+              <div class="reflection-top">
+                <label class="topic-input">
+                  <span>What are you thinking about today?</span>
+                  <input id="reflectionTopic" type="text" placeholder="For example: What does the weight of life actually feel like?" />
+                </label>
+                <div class="action-row">
+                  <button id="startReflectionBtn" class="primary-btn" type="button">Start Dialogue</button>
+                  <button id="finishReflectionBtn" class="secondary-btn" type="button">Finish and Generate</button>
+                </div>
+              </div>
+
+              <div class="chat-layout">
+                <div id="reflectionChat" class="chat-panel">
+                  <div class="empty-state">No dialogue yet.</div>
+                </div>
+                <aside class="thought-summary">
+                  <h3>Style Engine</h3>
+                  <p id="styleProfile" class="muted-copy">
+                    The app studies your excerpts and drafts to infer the style you seem to prefer.
+                  </p>
+                  <div class="summary-card">
+                    <strong>How generation works</strong>
+                    <p>
+                      When you finish, your ideas, keywords, emotional arc, and sentence rhythm are distilled into a new draft automatically.
+                    </p>
+                  </div>
+                  <p id="reflectionStatus" class="muted-note">
+                    Enter a topic and the AI will begin with the first real question.
+                  </p>
+                </aside>
+              </div>
+
+              <div class="composer">
+                <label>
+                  <span>Your Reply</span>
+                  <textarea
+                    id="reflectionReply"
+                    rows="6"
+                    placeholder="Write what you really think. You can also press Command/Ctrl + Enter to send."
+                  ></textarea>
+                </label>
+                <div class="action-row">
+                  <button id="sendReflectionBtn" class="primary-btn" type="button">Send Reply</button>
+                </div>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <section id="searchWorkspace" class="workspace">
+          <aside class="sidebar">
+            <div class="sidebar-header">
+              <div>
+                <h2>Cross-Library Search</h2>
+                <p>Search horizontally across excerpts and drafts.</p>
+              </div>
+            </div>
+            <div class="sidebar-block">
+              <label>
+                <span>Keyword</span>
+                <input id="globalSearchInput" type="search" placeholder="Book title, author, body, theme, style" />
+              </label>
+              <label>
+                <span>Content Type</span>
+                <select id="globalTypeFilter">
+                  <option value="all">All</option>
+                  <option value="quote">Excerpts Only</option>
+                  <option value="draft">Drafts Only</option>
+                </select>
+              </label>
+              <label>
+                <span>Sort</span>
+                <select id="globalSortMode">
+                  <option value="date-desc">Newest First</option>
+                  <option value="date-asc">Oldest First</option>
+                  <option value="theme">Theme</option>
+                  <option value="style">Style</option>
+                  <option value="mood">Mood</option>
+                </select>
+              </label>
+            </div>
+          </aside>
+
+          <section class="workspace-main">
+            <div class="panel">
+              <div class="panel-heading">
+                <h2>Results</h2>
+                <p>Browse matching excerpts and drafts across the entire library.</p>
+              </div>
+              <div id="globalSearchStats" class="muted-copy">Search has not started yet.</div>
+              <div id="globalResults" class="card-list"></div>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
