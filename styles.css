@@ -58,21 +58,50 @@ select {
   mix-blend-mode: soft-light;
 }
 
+.header-stack {
+  width: min(1280px, 100%);
+  margin: 0 auto;
+  display: grid;
+  gap: 16px;
+}
+
+.auth-card,
+.topbar {
+  border: 1px solid rgba(116, 99, 82, 0.08);
+  backdrop-filter: blur(18px);
+  position: relative;
+  z-index: 1;
+}
+
+.auth-card {
+  width: 100%;
+  margin: 0 auto;
+  padding: 10px 14px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(255, 252, 247, 0.8), rgba(247, 239, 230, 0.66));
+  box-shadow: 0 12px 28px rgba(42, 26, 18, 0.05);
+}
+
 .topbar {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: minmax(280px, auto) minmax(0, 1fr);
+  grid-template-areas:
+    "brand utility"
+    "main main";
   gap: 18px;
-  align-items: center;
-  padding: 20px 24px;
+  align-items: start;
+  padding: 18px 22px;
   border-radius: 30px;
   background:
     linear-gradient(135deg, rgba(255, 252, 247, 0.88), rgba(247, 239, 230, 0.78));
-  border: 1px solid rgba(116, 99, 82, 0.08);
-  backdrop-filter: blur(18px);
   box-shadow: var(--shadow);
-  position: sticky;
-  top: 14px;
-  z-index: 20;
+}
+
+.brand-block {
+  grid-area: brand;
+  justify-self: start;
+  align-self: center;
+  text-align: left;
 }
 
 .brand-block h1,
@@ -96,13 +125,96 @@ select {
 .brand-block h1 {
   font-size: clamp(2rem, 3.8vw, 3.3rem);
   font-weight: 700;
+  line-height: 1;
+}
+
+.auth-strip {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+
+.auth-strip-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.auth-strip-head .eyebrow {
+  margin: 0;
+  font-size: 0.68rem;
+}
+
+.auth-mark {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  opacity: 0.9;
+}
+
+.auth-inline-form {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.auth-inline-form input {
+  width: auto;
+  min-width: 150px;
+}
+
+.auth-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.utility-row {
+  gap: 8px;
+}
+
+.utility-row .status-pill,
+.utility-row .secondary-btn {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.utility-row #desktopStatusPill {
+  max-width: 520px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mainbar-row {
+  grid-area: main;
+  display: grid;
+  grid-template-columns: minmax(620px, 1fr) max-content;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.topbar-actions {
+  grid-area: utility;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-start;
+  align-self: center;
 }
 
 .tabbar {
-  display: inline-flex;
-  gap: 10px;
-  justify-content: center;
-  flex-wrap: wrap;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+  width: 100%;
+  min-width: 0;
+  overflow: visible;
   padding: 6px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.36);
@@ -124,9 +236,12 @@ select {
 }
 
 .tab-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
   border: 1px solid rgba(116, 99, 82, 0.08);
   background: rgba(255, 255, 255, 0.55);
   color: var(--muted);
+  font-size: 1.02rem;
 }
 
 .tab-btn.active {
@@ -166,16 +281,10 @@ select {
 
 .status-pills {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 10px;
   justify-content: flex-end;
-}
-
-.topbar-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: flex-end;
+  justify-self: end;
 }
 
 .status-pill {
@@ -237,6 +346,28 @@ select {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.sync-panel {
+  margin-top: 18px;
+  display: grid;
+  gap: 18px;
+}
+
+.sync-form {
+  display: grid;
+  gap: 14px;
+}
+
+.sync-session-card {
+  padding: 16px 18px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(79, 101, 91, 0.08), rgba(255, 255, 255, 0.52));
+  border: 1px solid rgba(79, 101, 91, 0.12);
+}
+
+.sync-panel.is-signed-in .sync-form {
+  opacity: 0.92;
 }
 
 .workspace {
@@ -631,16 +762,31 @@ textarea {
 @media (max-width: 1100px) {
   .workspace,
   .chat-layout,
-  .dual-panel,
-  .topbar {
+  .dual-panel {
     grid-template-columns: 1fr;
   }
 
-  .status-pills {
-    justify-content: flex-start;
+  .topbar {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "brand"
+      "utility"
+      "main";
+    gap: 12px;
   }
 
-  .topbar-actions {
+  .mainbar-row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .auth-card {
+    width: 100%;
+  }
+
+  .status-pills {
+    flex-wrap: wrap;
     justify-content: flex-start;
   }
 
@@ -662,6 +808,18 @@ textarea {
     padding: 16px;
   }
 
+  .auth-inline-form {
+    align-items: stretch;
+  }
+
+  .auth-inline-form input {
+    width: 100%;
+  }
+
+  .utility-row #desktopStatusPill {
+    max-width: 100%;
+  }
+
   .tabbar,
   .toolbar,
   .subheading,
@@ -670,5 +828,16 @@ textarea {
   .reflection-top {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .tabbar {
+    flex-direction: row;
+    align-items: center;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .tabbar::-webkit-scrollbar {
+    display: none;
   }
 }

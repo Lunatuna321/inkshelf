@@ -7,12 +7,14 @@ InkShelf is a local reading, writing, and reflection workspace. It lets you:
 - talk through a theme with AI and turn the conversation into a polished short piece
 - search across excerpts and drafts
 - rewrite drafts into different tones with AI
+- sign in with a development account and keep a sync-ready cloud copy of your library
 
 ## Project Structure
 
 - `index.html`, `styles.css`, `app.js`: front-end app
 - `server.js`: local web server and OpenAI proxy
 - `electron/`: desktop wrapper
+- `data/`: local development sync storage for signed-in accounts
 
 ## Run In Browser
 
@@ -61,6 +63,14 @@ The packaged app and DMG will be created in the `dist/` folder.
 
 In desktop mode, InkShelf keeps a file-based copy of your data inside Electron's `userData` directory.
 It also keeps a backup copy there, in addition to the in-app local browser storage.
+
+In sync-preview mode, the local server also keeps a per-account JSON copy under:
+
+```bash
+./data/cloud-library
+```
+
+This is a development-only bridge so desktop and web can start sharing one account-shaped library before a production auth/database stack is added.
 
 On macOS this normally resolves to a path like:
 

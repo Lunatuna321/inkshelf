@@ -99,8 +99,17 @@ const els = {
   importBackupBtn: document.querySelector("#importBackupBtn"),
   importBackupInput: document.querySelector("#importBackupInput"),
   desktopStatusPill: document.querySelector("#desktopStatusPill"),
+  cloudStatusPill: document.querySelector("#cloudStatusPill"),
+  accountStatusPill: document.querySelector("#accountStatusPill"),
   welcomePanel: document.querySelector("#welcomePanel"),
   dismissWelcomeBtn: document.querySelector("#dismissWelcomeBtn"),
+  authForm: document.querySelector("#authForm"),
+  authNameInput: document.querySelector("#authNameInput"),
+  authEmailInput: document.querySelector("#authEmailInput"),
+  signInBtn: document.querySelector("#signInBtn"),
+  authHint: document.querySelector("#authHint"),
+  syncNowBtn: document.querySelector("#syncNowBtn"),
+  signOutBtn: document.querySelector("#signOutBtn"),
 };
 
 let state = loadState();
@@ -108,9 +117,15 @@ let aiReady = false;
 let aiBusy = false;
 let streamingAssistantIndex = -1;
 let saveTimer = null;
+let cloudSaveTimer = null;
 let lastDesktopSave = null;
 let desktopStorageInfo = null;
 let uiPreferences = loadUiPreferences();
+let authState = {
+  user: null,
+  status: "signed_out",
+  lastSyncedAt: null,
+};
 
 els.quoteDate.value = today;
 
@@ -120,12 +135,17 @@ async function bootstrap() {
   bindEvents();
   activateTab(state.ui.activeTab);
   await hydrateDesktopState();
+  await loadAuthSession();
+  if (authState.user) {
+    await hydrateCloudState();
+  }
   await loadDesktopStorageInfo();
   renderAll();
   updateLiveMatch();
   renderStyleProfile();
   checkAiStatus();
   renderDesktopStatus();
+  renderAuthUi();
   renderWelcomePanel();
 }
 
@@ -173,6 +193,9 @@ function bindEvents() {
   });
   els.importBackupInput.addEventListener("change", importBackup);
   els.dismissWelcomeBtn.addEventListener("click", dismissWelcomePanel);
+  els.authForm.addEventListener("submit", signInToSync);
+  els.signOutBtn.addEventListener("click", signOutFromSync);
+  els.syncNowBtn.addEventListener("click", pullLatestCloudState);
 
   els.startReflectionBtn.addEventListener("click", startReflection);
   els.sendReflectionBtn.addEventListener("click", sendReflectionReply);
@@ -212,7 +235,9 @@ function loadState() {
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   queueDesktopSave();
+  queueCloudSave();
   renderDesktopStatus();
+  renderAuthUi();
 }
 
 function loadUiPreferences() {
@@ -314,6 +339,44 @@ async function loadDesktopStorageInfo() {
   }
 }
 
+async function loadAuthSession() {
+  try {
+    const response = await fetch("/api/auth/session");
+    const data = await response.json();
+    authState.user = data.user || null;
+    authState.status = authState.user ? "signed_in" : "signed_out";
+  } catch {
+    authState.user = null;
+    authState.status = "offline";
+  }
+}
+
+async function hydrateCloudState() {
+  if (!authState.user) {
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/sync/state");
+    if (!response.ok) {
+      throw new Error("sync_pull_failed");
+    }
+    const data = await response.json();
+    if (data?.hasState && data.state) {
+      state = normalizeState(data.state);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      await saveDesktopStateNow();
+      authState.lastSyncedAt = data.updatedAt || null;
+      authState.status = "signed_in";
+      return;
+    }
+
+    await saveCloudStateNow();
+  } catch {
+    authState.status = "sync_error";
+  }
+}
+
 function queueDesktopSave() {
   if (!window.inkShelfDesktop?.isDesktop || typeof window.inkShelfDesktop.saveData !== "function") {
     return;
@@ -326,6 +389,20 @@ function queueDesktopSave() {
   saveTimer = window.setTimeout(() => {
     saveDesktopStateNow();
   }, 250);
+}
+
+function queueCloudSave() {
+  if (!authState.user) {
+    return;
+  }
+
+  if (cloudSaveTimer) {
+    window.clearTimeout(cloudSaveTimer);
+  }
+
+  cloudSaveTimer = window.setTimeout(() => {
+    saveCloudStateNow();
+  }, 600);
 }
 
 async function saveDesktopStateNow() {
@@ -343,6 +420,100 @@ async function saveDesktopStateNow() {
   }
 }
 
+async function saveCloudStateNow() {
+  if (!authState.user) {
+    return;
+  }
+
+  try {
+    authState.status = "syncing";
+    renderAuthUi();
+    const response = await fetch("/api/sync/state", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ state }),
+    });
+    if (!response.ok) {
+      throw new Error("sync_push_failed");
+    }
+    const data = await response.json();
+    authState.lastSyncedAt = data.syncedAt || new Date().toISOString();
+    authState.status = "signed_in";
+  } catch {
+    authState.status = "sync_error";
+  } finally {
+    renderAuthUi();
+  }
+}
+
+async function signInToSync(event) {
+  event.preventDefault();
+  const email = els.authEmailInput.value.trim().toLowerCase();
+  const name = els.authNameInput.value.trim();
+
+  if (!email) {
+    els.authHint.textContent = "Add an email address first so InkShelf can open the right cloud library.";
+    return;
+  }
+
+  try {
+    authState.status = "syncing";
+    renderAuthUi();
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, name }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || "login_failed");
+    }
+    authState.user = data.user;
+    authState.status = "signed_in";
+    await hydrateCloudState();
+    renderAll();
+    updateLiveMatch();
+    renderStyleProfile();
+    els.authHint.textContent = "Signed in. InkShelf will keep this library synced to the server-side account copy.";
+  } catch {
+    authState.user = null;
+    authState.status = "sync_error";
+    els.authHint.textContent = "Sign-in could not be completed right now.";
+  } finally {
+    renderAuthUi();
+  }
+}
+
+async function signOutFromSync() {
+  try {
+    await fetch("/api/auth/logout", { method: "POST" });
+  } catch {
+    // Best effort.
+  }
+
+  authState = {
+    user: null,
+    status: "signed_out",
+    lastSyncedAt: null,
+  };
+  renderAuthUi();
+}
+
+async function pullLatestCloudState() {
+  if (!authState.user) {
+    els.authHint.textContent = "Sign in first, then you can pull the latest cloud copy.";
+    return;
+  }
+
+  authState.status = "syncing";
+  renderAuthUi();
+  await hydrateCloudState();
+  renderAll();
+  updateLiveMatch();
+  renderStyleProfile();
+  renderAuthUi();
+}
+
 function renderDesktopStatus() {
   if (!els.desktopStatusPill) {
     return;
@@ -356,6 +527,37 @@ function renderDesktopStatus() {
   const saveText = lastDesktopSave ? `Saved ${formatTimestamp(lastDesktopSave)}` : "Desktop storage active";
   const locationText = desktopStorageInfo?.dataFile ? ` · ${shortenPath(desktopStorageInfo.dataFile)}` : "";
   els.desktopStatusPill.textContent = `${saveText}${locationText}`;
+}
+
+function renderAuthUi() {
+  if (!els.cloudStatusPill || !els.accountStatusPill) {
+    return;
+  }
+
+  const user = authState.user;
+  const syncStatusMap = {
+    signed_out: "Cloud sync off",
+    signed_in: authState.lastSyncedAt ? `Cloud synced ${formatTimestamp(authState.lastSyncedAt)}` : "Cloud connected",
+    syncing: "Syncing to cloud…",
+    sync_error: "Cloud sync needs attention",
+    offline: "Auth service unavailable",
+  };
+
+  els.cloudStatusPill.textContent = syncStatusMap[authState.status] || "Cloud sync off";
+  els.accountStatusPill.textContent = user ? `${user.name} · ${user.email}` : "Signed out";
+  els.authEmailInput.value = user?.email || els.authEmailInput.value;
+  els.authNameInput.value = user?.name || els.authNameInput.value;
+  els.authEmailInput.disabled = Boolean(user);
+  els.authNameInput.disabled = Boolean(user);
+  els.signInBtn.disabled = Boolean(user);
+  els.syncNowBtn.disabled = !user;
+  els.signOutBtn.disabled = !user;
+  els.authHint.textContent =
+    authState.status === "sync_error"
+      ? "The last sync step failed. Your local library is still safe on this device."
+      : user
+        ? "Signed in. InkShelf will keep using this account until you sign out."
+        : "In this development version, signing in creates a local session for your email and stores a synced library copy on the server side.";
 }
 
 function renderWelcomePanel() {

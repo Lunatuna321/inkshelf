@@ -1,12 +1,18 @@
 const http = require("node:http");
 const fs = require("node:fs");
+const fsp = require("node:fs/promises");
 const path = require("node:path");
+const crypto = require("node:crypto");
 
 const PORT = process.env.PORT || 3000;
 const HOST = "127.0.0.1";
 const ROOT = __dirname;
+const DATA_ROOT = path.join(ROOT, "data");
+const CLOUD_ROOT = path.join(DATA_ROOT, "cloud-library");
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-5";
+const SESSION_COOKIE = "inkshelf_session";
+const sessions = new Map();
 
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -18,6 +24,26 @@ const MIME_TYPES = {
 function createServer() {
   return http.createServer(async (req, res) => {
     try {
+      if (req.method === "GET" && req.url === "/api/auth/session") {
+        return handleAuthSession(req, res);
+      }
+
+      if (req.method === "POST" && req.url === "/api/auth/login") {
+        return handleAuthLogin(req, res);
+      }
+
+      if (req.method === "POST" && req.url === "/api/auth/logout") {
+        return handleAuthLogout(req, res);
+      }
+
+      if (req.method === "GET" && req.url === "/api/sync/state") {
+        return handleSyncPull(req, res);
+      }
+
+      if (req.method === "POST" && req.url === "/api/sync/state") {
+        return handleSyncPush(req, res);
+      }
+
       if (req.method === "GET" && req.url === "/api/status") {
         return json(res, 200, {
           ok: Boolean(OPENAI_API_KEY),
@@ -49,6 +75,87 @@ function createServer() {
     } catch (error) {
       return json(res, 500, { error: "server_error", detail: String(error.message || error) });
     }
+  });
+}
+
+async function handleAuthSession(req, res) {
+  const session = getSession(req);
+  return json(res, 200, {
+    user: session ? session.user : null,
+  });
+}
+
+async function handleAuthLogin(req, res) {
+  const body = await readJson(req);
+  const email = String(body.email || "").trim().toLowerCase();
+  const name = String(body.name || "").trim();
+
+  if (!email || !email.includes("@")) {
+    return json(res, 400, { error: "invalid_email" });
+  }
+
+  const user = {
+    id: buildUserId(email),
+    email,
+    name: name || email.split("@")[0],
+  };
+
+  const sessionId = crypto.randomUUID();
+  sessions.set(sessionId, {
+    user,
+    createdAt: new Date().toISOString(),
+  });
+
+  setSessionCookie(res, sessionId);
+  return json(res, 200, { ok: true, user });
+}
+
+async function handleAuthLogout(req, res) {
+  const cookies = parseCookies(req);
+  const sessionId = cookies[SESSION_COOKIE];
+  if (sessionId) {
+    sessions.delete(sessionId);
+  }
+  clearSessionCookie(res);
+  return json(res, 200, { ok: true });
+}
+
+async function handleSyncPull(req, res) {
+  const session = requireSession(req, res);
+  if (!session) {
+    return;
+  }
+
+  const payload = await readCloudState(session.user.id);
+  return json(res, 200, {
+    user: session.user,
+    hasState: Boolean(payload),
+    state: payload?.state || null,
+    updatedAt: payload?.updatedAt || null,
+  });
+}
+
+async function handleSyncPush(req, res) {
+  const session = requireSession(req, res);
+  if (!session) {
+    return;
+  }
+
+  const body = await readJson(req);
+  if (!body || typeof body.state !== "object" || body.state === null) {
+    return json(res, 400, { error: "invalid_state" });
+  }
+
+  const payload = {
+    user: session.user,
+    updatedAt: new Date().toISOString(),
+    state: body.state,
+  };
+
+  await writeCloudState(session.user.id, payload);
+  return json(res, 200, {
+    ok: true,
+    syncedAt: payload.updatedAt,
   });
 }
 
@@ -293,7 +400,7 @@ async function handleDraftRewrite(req, res) {
 function serveStatic(req, res) {
   const pathname = req.url === "/" ? "/index.html" : req.url;
   const safePath = path.normalize(path.join(ROOT, pathname));
-  if (!safePath.startsWith(ROOT)) {
+  if (!safePath.startsWith(ROOT) || safePath.startsWith(DATA_ROOT)) {
     return json(res, 403, { error: "forbidden" });
   }
 
@@ -309,6 +416,72 @@ function serveStatic(req, res) {
     }
     res.end(file);
   });
+}
+
+function parseCookies(req) {
+  const header = req.headers.cookie || "";
+  return header
+    .split(";")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .reduce((acc, entry) => {
+      const index = entry.indexOf("=");
+      if (index < 0) {
+        return acc;
+      }
+      const key = entry.slice(0, index);
+      const value = decodeURIComponent(entry.slice(index + 1));
+      acc[key] = value;
+      return acc;
+    }, {});
+}
+
+function getSession(req) {
+  const cookies = parseCookies(req);
+  const sessionId = cookies[SESSION_COOKIE];
+  if (!sessionId) {
+    return null;
+  }
+  return sessions.get(sessionId) || null;
+}
+
+function requireSession(req, res) {
+  const session = getSession(req);
+  if (!session) {
+    json(res, 401, { error: "auth_required" });
+    return null;
+  }
+  return session;
+}
+
+function setSessionCookie(res, sessionId) {
+  res.setHeader("Set-Cookie", `${SESSION_COOKIE}=${encodeURIComponent(sessionId)}; Path=/; HttpOnly; SameSite=Lax`);
+}
+
+function clearSessionCookie(res) {
+  res.setHeader("Set-Cookie", `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+}
+
+function buildUserId(email) {
+  return email.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+}
+
+function getCloudFile(userId) {
+  return path.join(CLOUD_ROOT, `${userId}.json`);
+}
+
+async function readCloudState(userId) {
+  try {
+    const raw = await fsp.readFile(getCloudFile(userId), "utf8");
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+async function writeCloudState(userId, payload) {
+  await fsp.mkdir(CLOUD_ROOT, { recursive: true });
+  await fsp.writeFile(getCloudFile(userId), JSON.stringify(payload, null, 2), "utf8");
 }
 
 function buildChatPayload(body, stream = false) {

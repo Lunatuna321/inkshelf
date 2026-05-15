@@ -8,29 +8,54 @@
   </head>
   <body>
     <div class="app-shell">
-      <header class="topbar">
-        <div class="brand-block">
-          <p class="eyebrow">Reading, Writing, Reflection</p>
-          <h1>InkShelf</h1>
-        </div>
-        <nav class="tabbar" aria-label="Main Navigation">
-          <button class="tab-btn active" data-tab="quotes" type="button">Excerpts</button>
-          <button class="tab-btn" data-tab="writing" type="button">Writing</button>
-          <button class="tab-btn" data-tab="reflection" type="button">Reflection</button>
-          <button class="tab-btn" data-tab="search" type="button">Library Search</button>
-        </nav>
-        <div class="status-pills">
-          <span class="status-pill"><strong id="bookCount">0</strong> Active Books</span>
-          <span class="status-pill"><strong id="quoteCount">0</strong> Excerpts</span>
-          <span class="status-pill"><strong id="draftCount">0</strong> Drafts</span>
-        </div>
-        <div class="topbar-actions">
-          <span id="desktopStatusPill" class="status-pill subtle-pill">Local-only mode</span>
-          <button id="exportBackupBtn" class="secondary-btn" type="button">Export Backup</button>
-          <button id="importBackupBtn" class="secondary-btn" type="button">Import Backup</button>
-          <input id="importBackupInput" type="file" accept="application/json,.json" hidden />
-        </div>
-      </header>
+      <div class="header-stack">
+        <section class="auth-card">
+          <div class="auth-strip">
+            <div class="auth-strip-head">
+              <img class="auth-mark" src="./build/icon.svg" alt="InkShelf" />
+              <span class="eyebrow">Sync Access</span>
+            </div>
+            <form id="authForm" class="auth-inline-form">
+              <input id="authNameInput" type="text" placeholder="Name" />
+              <input id="authEmailInput" type="email" placeholder="you@example.com" required />
+              <button id="signInBtn" class="primary-btn" type="submit">Sign In</button>
+              <button id="syncNowBtn" class="secondary-btn" type="button">Pull Cloud Copy</button>
+              <button id="signOutBtn" class="secondary-btn" type="button">Sign Out</button>
+            </form>
+            <div class="auth-meta-row">
+              <span id="accountStatusPill" class="status-pill subtle-pill">Signed out</span>
+              <span id="cloudStatusPill" class="status-pill subtle-pill">Cloud sync off</span>
+              <span id="authHint" class="muted-note">Sign in to let desktop and web share one library.</span>
+            </div>
+          </div>
+        </section>
+
+        <header class="topbar">
+          <div class="brand-block">
+            <p class="eyebrow">Reading, Writing, Reflection</p>
+            <h1>InkShelf</h1>
+          </div>
+          <div class="topbar-actions utility-row">
+            <span id="desktopStatusPill" class="status-pill subtle-pill">Local-only mode</span>
+            <button id="exportBackupBtn" class="secondary-btn" type="button">Export Backup</button>
+            <button id="importBackupBtn" class="secondary-btn" type="button">Import Backup</button>
+            <input id="importBackupInput" type="file" accept="application/json,.json" hidden />
+          </div>
+          <div class="mainbar-row">
+            <nav class="tabbar" aria-label="Main Navigation">
+              <button class="tab-btn active" data-tab="quotes" type="button">Excerpts</button>
+              <button class="tab-btn" data-tab="writing" type="button">Writing</button>
+              <button class="tab-btn" data-tab="reflection" type="button">Reflection</button>
+              <button class="tab-btn" data-tab="search" type="button">Library Search</button>
+            </nav>
+            <div class="status-pills">
+              <span class="status-pill"><strong id="bookCount">0</strong> Active Books</span>
+              <span class="status-pill"><strong id="quoteCount">0</strong> Excerpts</span>
+              <span class="status-pill"><strong id="draftCount">0</strong> Drafts</span>
+            </div>
+          </div>
+        </header>
+      </div>
 
       <section id="welcomePanel" class="panel welcome-panel hidden">
         <div>
